@@ -1,0 +1,20 @@
+/*🧱
+Q135 (Enum)
+Assign explicit values starting from 10 and print them.
+Input 1:
+No input
+Output 1:
+A=10
+B=11
+C=12
+Explanation 1:
+Enum values can be explicitly assigned; subsequent values auto-increment.*/
+#include <stdio.h>
+
+int main() {
+    enum Letters {A=10, B, C};
+    printf("A=%d\n", A);
+    printf("B=%d\n", B);
+    printf("C=%d\n", C);
+    return 0;
+}
