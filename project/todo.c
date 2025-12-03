@@ -1,65 +1,60 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MAX_USERS 20
-#define MAX_TASKS 50
+#define MAXU 20
+#define MAXT 50
 
-/* ---------- TASK STRUCT (priority + due date) ---------- */
+// ---------- UNION FOR PRIORITY ----------
+typedef union {
+    int num;          // number priority
+    char text[10];    // label priority
+} Punion;
+
+// ---------- TASK ----------
 typedef struct {
     char title[50];
     char desc[100];
-    int priority;       // Each task HAS a priority
-    char due[20];       // Each task HAS a due date
+    Punion pri;       // union variable
+    int ptype;        // 1 = number, 2 = label
+    char due[20];
 } Task;
 
-/* ---------- STACK ---------- */
+// ---------- STACK ----------
 typedef struct {
-    Task t[MAX_TASKS];
+    Task arr[MAXT];
     int top;
 } Stack;
 
-/* ---------- USER ---------- */
+// ---------- USER ----------
 typedef struct {
     char uname[30];
     char pass[30];
-    Stack todo;
+    Stack st;
 } User;
 
-User users[MAX_USERS];
-int userCount = 0;
+User user[MAXU];
+int ucount = 0;
 
-/* ---------- CLEAR INPUT BUFFER ---------- */
-void flushInput() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-}
+// ---------- STACK FUNCTIONS ----------
+void init(Stack *s) { s->top = -1; }
+int empty(Stack *s) { return s->top == -1; }
+int full(Stack *s) { return s->top == MAXT - 1; }
 
-/* ---------- STACK FUNCTIONS ---------- */
-void initStack(Stack *s) { s->top = -1; }
-int isEmpty(Stack *s) { return s->top == -1; }
-int isFull(Stack *s) { return s->top == MAX_TASKS - 1; }
+void push(Stack *s, Task t) { s->arr[++s->top] = t; }
+Task pop(Stack *s) { return s->arr[s->top--]; }
 
-void push(Stack *s, Task x) {
-    if (!isFull(s)) s->t[++s->top] = x;
-}
-
-Task pop(Stack *s) {
-    return s->t[s->top--];
-}
-
-/* ---------- FIND USER ---------- */
-int findUser(char *name) {
-    for (int i = 0; i < userCount; i++)
-        if (strcmp(users[i].uname, name) == 0)
+// ---------- USER FUNCTIONS ----------
+int findUser(char name[]) {
+    for (int i = 0; i < ucount; i++)
+        if (strcmp(user[i].uname, name) == 0)
             return i;
     return -1;
 }
 
-/* ---------- REGISTER USER ---------- */
-void registerUser() {
-    char name[30], pass[30];
+void regUser() {
+    char name[30], pw[30];
 
-    printf("Enter new username: ");
+    printf("Enter username: ");
     scanf("%s", name);
 
     if (findUser(name) != -1) {
@@ -68,155 +63,170 @@ void registerUser() {
     }
 
     printf("Enter password: ");
-    scanf("%s", pass);
+    scanf("%s", pw);
 
-    strcpy(users[userCount].uname, name);
-    strcpy(users[userCount].pass, pass);
-    initStack(&users[userCount].todo);
+    strcpy(user[ucount].uname, name);
+    strcpy(user[ucount].pass, pw);
 
-    userCount++;
+    init(&user[ucount].st);
+    ucount++;
 
-    printf("User created successfully!\n");
+    printf("User Registered!\n");
 }
 
-/* ---------- LOGIN USER ---------- */
-int loginUser() {
-    char name[30], pass[30];
+int login() {
+    char name[30], pw[30];
 
     printf("Username: ");
     scanf("%s", name);
+
     printf("Password: ");
-    scanf("%s", pass);
+    scanf("%s", pw);
 
-    int idx = findUser(name);
+    int id = findUser(name);
 
-    if (idx != -1 && strcmp(users[idx].pass, pass) == 0) {
+    if (id != -1 && strcmp(user[id].pass, pw) == 0) {
         printf("Login Successful!\n");
-        return idx;
+        return id;
     }
 
     printf("Login Failed!\n");
     return -1;
 }
 
-/* ---------- ADD TASK (priority + due date) ---------- */
+// ---------- TASK FUNCTIONS ----------
 void addTask(Stack *s) {
-    if (isFull(s)) {
-        printf("Task limit reached!\n");
+    if (full(s)) {
+        printf("Task list full!\n");
         return;
     }
 
-    Task x;
+    Task t;
 
-    flushInput();
     printf("Task title: ");
-    fgets(x.title, 50, stdin);
-    x.title[strcspn(x.title, "\n")] = 0;
+    scanf(" %[^\n]", t.title);
 
     printf("Task description: ");
-    fgets(x.desc, 100, stdin);
-    x.desc[strcspn(x.desc, "\n")] = 0;
+    scanf(" %[^\n]", t.desc);
 
-    printf("Enter priority number: ");
-    scanf("%d", &x.priority);
+    printf("\nChoose Priority Type:\n");
+    printf("1. Number (1-10)\n");
+    printf("2. Label (Low/Medium/High)\n");
+    printf("Enter: ");
+    scanf("%d", &t.ptype);
 
-    printf("Enter due date (DD/MM/YYYY): ");
-    scanf("%s", x.due);
+    if (t.ptype == 1) {
+        printf("Enter number priority: ");
+        scanf("%d", &t.pri.num);
+    } else {
+        printf("Enter label priority: ");
+        scanf("%s", t.pri.text);
+    }
 
-    push(s, x);
+    printf("Due Date (DD/MM/YYYY): ");
+    scanf("%s", t.due);
 
-    printf("Task added successfully.\n");
+    push(s, t);
+    printf("Task Added!\n");
 }
 
-/* ---------- VIEW ALL TASKS ---------- */
-void viewTasks(Stack *s) {
-    if (isEmpty(s)) {
-        printf("No tasks available.\n");
+void showTasks(Stack *s) {
+    if (empty(s)) {
+        printf("No tasks!\n");
         return;
     }
 
-    printf("\n--- Task List ---\n");
+    printf("\n--- ALL TASKS ---\n");
+
     for (int i = s->top; i >= 0; i--) {
-        printf("%d) %s | Priority: %d | Due: %s\n",
-               s->top - i + 1,
-               s->t[i].title,
-               s->t[i].priority,
-               s->t[i].due);
+        printf("%d) %s | ", s->top - i + 1, s->arr[i].title);
+
+        if (s->arr[i].ptype == 1)
+            printf("Priority: %d | ", s->arr[i].pri.num);
+        else
+            printf("Priority: %s | ", s->arr[i].pri.text);
+
+        printf("Due: %s\n", s->arr[i].due);
     }
 }
 
-/* ---------- VIEW TOP TASK ---------- */
-void viewTop(Stack *s) {
-    if (isEmpty(s)) {
-        printf("No tasks.\n");
+void showTop(Stack *s) {
+    if (empty(s)) {
+        printf("No tasks!\n");
         return;
     }
 
-    Task x = s->t[s->top];
+    Task t = s->arr[s->top];
 
-    printf("\n--- Top Task ---\n");
-    printf("Title: %s\n", x.title);
-    printf("Description: %s\n", x.desc);
-    printf("Priority: %d\n", x.priority);
-    printf("Due Date: %s\n", x.due);
+    printf("\n--- TOP TASK ---\n");
+    printf("Title: %s\n", t.title);
+    printf("Description: %s\n", t.desc);
+
+    if (t.ptype == 1)
+        printf("Priority: %d\n", t.pri.num);
+    else
+        printf("Priority: %s\n", t.pri.text);
+
+    printf("Due: %s\n", t.due);
 }
 
-/* ---------- REMOVE TOP TASK ---------- */
-void removeTop(Stack *s) {
-    if (isEmpty(s)) {
-        printf("No tasks to remove.\n");
+void delTop(Stack *s) {
+    if (empty(s)) {
+        printf("No task to remove!\n");
         return;
     }
 
-    Task x = pop(s);
-    printf("Task removed: %s\n", x.title);
+    printf("Removed: %s\n", s->arr[s->top].title);
+    pop(s);
 }
 
-/* ---------- USER MENU ---------- */
-void userMenu(int uid) {
+// ---------- USER MENU ----------
+void menuUser(int id) {
     int ch;
-    Stack *s = &users[uid].todo;
+    Stack *s = &user[id].st;
 
     do {
-        printf("\n--- USER MENU (%s) ---\n", users[uid].uname);
-        printf("1. Add Task\n");
-        printf("2. View All Tasks\n");
+        printf("\n1. Add Task\n");
+        printf("2. View Tasks\n");
         printf("3. View Top Task\n");
-        printf("4. Remove Top Task\n");
+        printf("4. Remove Top\n");
         printf("5. Logout\n");
-        printf("Enter choice: ");
+        printf("Enter: ");
         scanf("%d", &ch);
 
         switch (ch) {
             case 1: addTask(s); break;
-            case 2: viewTasks(s); break;
-            case 3: viewTop(s); break;
-            case 4: removeTop(s); break;
+            case 2: showTasks(s); break;
+            case 3: showTop(s); break;
+            case 4: delTop(s); break;
             case 5: printf("Logged out.\n"); break;
-            default: printf("Invalid option.\n");
+            default: printf("Invalid choice!\n");
         }
     } while (ch != 5);
 }
 
-/* ---------- MAIN ---------- */
+// ---------- MAIN ----------
 int main() {
-    int ch, uid;
+    int ch, id;
 
     while (1) {
-        printf("\n--- MAIN MENU ---\n");
-        printf("1. Register\n");
+        printf("\n1. Register\n");
         printf("2. Login\n");
         printf("3. Exit\n");
-        printf("Enter choice: ");
+        printf("Enter: ");
         scanf("%d", &ch);
 
-        if (ch == 1) registerUser();
+        if (ch == 1)
+            regUser();
         else if (ch == 2) {
-            uid = loginUser();
-            if (uid != -1) userMenu(uid);
+            id = login();
+            if (id != -1)
+                menuUser(id);
         }
-        else if (ch == 3) break;
-        else printf("Invalid choice.\n");
+        else if (ch == 3)
+            break;
+        else
+            printf("Invalid choice!\n");
     }
 
     return 0;
